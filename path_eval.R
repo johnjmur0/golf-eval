@@ -1,27 +1,55 @@
-
-path_df = read_csv("C:/users/jack.murphy/downloads/path_compare.csv") %>% 
-  mutate(Date = mdy(Date),
-         row = row_number(),
-         path = as.numeric(`Club Path`),
-         AoA = as.numeric(`Attack Ang.`),
-         FtP = as.numeric(`Face To Path`),
-         swing_dir = as.numeric(`Swing Dir.`)) %>% 
-  select(Date, Shot, row, path, AoA, FtP, swing_dir) %>% rename(date = Date, shot = Shot)
-
-
-path_df %>% 
-  mutate(face = FtP - path) %>% 
+path_df <- read_csv("C:/users/jack.murphy/downloads/path_compare.csv") %>%
+  mutate(
+    Date = mdy(Date),
+    row = row_number(),
+    path = as.numeric(`Club Path`),
+    AoA = as.numeric(`Attack Ang.`),
+    FtP = as.numeric(`Face To Path`),
+    swing_dir = as.numeric(`Swing Dir.`)
+  ) %>%
+  select(Date, Shot, row, path, AoA, FtP, swing_dir) %>%
+  rename(date = Date, shot = Shot) %>%
+  mutate(face = FtP - path) %>%
   mutate(path_change = path - lag(path, 1)) %>%
   mutate(ftp_change = FtP - lag(FtP, 1)) %>%
   mutate(face_change = face - lag(face, 1)) %>%
+  mutate(dir_change = swing_dir - lag(swing_dir, 1)) %>%
   filter(!is.na(path_change)) %>%
-  filter(!is.na(ftp_change)) %>%
-  group_by(date) %>% 
-  select(date, row, path, path_change, FtP, ftp_change, face, face_change) %>% 
-  
+  filter(!is.na(ftp_change))
+
+
+path_df %>%
+  group_by(date) %>%
+  select(
+    date, row,
+    path, path_change,
+    FtP, ftp_change,
+    face, face_change,
+    swing_dir, dir_change
+  ) %>%
   tidyr::gather(key = variable, value = value, -c(date, row)) %>%
-  
-  ggplot() + 
-  geom_line(aes(x=row, y=value, color = as.factor(date))) +
+  ggplot() +
+  geom_line(aes(x = row, y = value, color = as.factor(date))) +
   facet_wrap(~variable, scales = "free") +
   geom_hline(yintercept = 0)
+
+
+change_df <- path_df %>%
+  select(date, shot, row, !contains("_change")) %>%
+  tidyr::gather(key = var, value = value, -c(date, row, shot)) %>%
+  group_by(date, var) %>%
+  summarise(st_dev = sd(value))
+
+path_df %>%
+  select(date, shot, row, !contains("_change")) %>%
+  tidyr::gather(key = var, value = value, -c(date, row, shot)) %>%
+  group_by(date, var) %>%
+  summarise(
+    avg = mean(value),
+    st_dev = sd(value)
+  ) %>%
+  mutate(var = factor(var, levels = c("AoA", "swing_dir", "path", "face", "FtP"))) %>%
+  tidyr::gather(key = stat, value = value, -c(date, var)) %>%
+  ggplot() +
+  geom_col(aes(x = var, y = value, fill = as.factor(date)), position = "dodge") +
+  facet_wrap(~stat, scales = "free")
