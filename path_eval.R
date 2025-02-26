@@ -14,31 +14,32 @@ path_df <- read_csv("C:/users/jack.murphy/downloads/path_compare.csv") %>%
   mutate(ftp_change = FtP - lag(FtP, 1)) %>%
   mutate(face_change = face - lag(face, 1)) %>%
   mutate(dir_change = swing_dir - lag(swing_dir, 1)) %>%
+  mutate(AoA_change = AoA - lag(AoA, 1)) %>%
   filter(!is.na(path_change)) %>%
   filter(!is.na(ftp_change))
-
 
 path_df %>%
   group_by(date) %>%
   select(
     date, row,
+    AoA, AoA_change,
     path, path_change,
     FtP, ftp_change,
     face, face_change,
     swing_dir, dir_change
   ) %>%
-  tidyr::gather(key = variable, value = value, -c(date, row)) %>%
+  tidyr::gather(key = var, value = value, -c(date, row)) %>%
+  mutate(var = factor(var, levels = c(
+    "AoA", "AoA_change",
+    "path", "path_change",
+    "face", "face_change",
+    "FtP", "ftp_change",
+    "swing_dir", "dir_change"
+  ))) %>%
   ggplot() +
   geom_line(aes(x = row, y = value, color = as.factor(date))) +
-  facet_wrap(~variable, scales = "free") +
+  facet_wrap(~var, scales = "free") +
   geom_hline(yintercept = 0)
-
-
-change_df <- path_df %>%
-  select(date, shot, row, !contains("_change")) %>%
-  tidyr::gather(key = var, value = value, -c(date, row, shot)) %>%
-  group_by(date, var) %>%
-  summarise(st_dev = sd(value))
 
 path_df %>%
   select(date, shot, row, !contains("_change")) %>%
