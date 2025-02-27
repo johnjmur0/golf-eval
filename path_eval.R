@@ -18,7 +18,7 @@ path_df <- read_csv("C:/users/jack.murphy/downloads/path_compare.csv") %>%
   filter(!is.na(path_change)) %>%
   filter(!is.na(ftp_change))
 
-path_df %>%
+time_df <- path_df %>%
   group_by(date) %>%
   select(
     date, row,
@@ -35,13 +35,16 @@ path_df %>%
     "face", "face_change",
     "FtP", "ftp_change",
     "swing_dir", "dir_change"
-  ))) %>%
+  )))
+
+
+time_df %>%
   ggplot() +
   geom_line(aes(x = row, y = value, color = as.factor(date))) +
   facet_wrap(~var, scales = "free") +
   geom_hline(yintercept = 0)
 
-path_df %>%
+agg_df <- path_df %>%
   select(date, shot, row, !contains("_change")) %>%
   tidyr::gather(key = var, value = value, -c(date, row, shot)) %>%
   group_by(date, var) %>%
@@ -50,7 +53,23 @@ path_df %>%
     st_dev = sd(value)
   ) %>%
   mutate(var = factor(var, levels = c("AoA", "swing_dir", "path", "face", "FtP"))) %>%
-  tidyr::gather(key = stat, value = value, -c(date, var)) %>%
+  tidyr::gather(key = stat, value = value, -c(date, var))
+
+agg_df %>%
   ggplot() +
   geom_col(aes(x = var, y = value, fill = as.factor(date)), position = "dodge") +
   facet_wrap(~stat, scales = "free")
+
+agg_df %>%
+  filter(stat == "st_dev" & var == "face") %>%
+  mutate(
+    max = max(.$value),
+    ratio = value / max
+  )
+
+agg_df %>%
+  filter(stat == "st_dev" & var == "face") %>%
+  mutate(
+    max = max(.$value),
+    ratio = value / max
+  )
